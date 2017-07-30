@@ -1,0 +1,328 @@
+<html>
+<head>
+    <title>lab1</title>
+
+    <!--two divisions-->
+    <style type="text/css">
+        .div1 {
+             position: absolute;
+             margin-left: 5%;
+             margin-top: 5%;
+             width: 400px;
+             height: 400px;
+         }
+        .div2 {
+            position: relative;
+            margin-left: 50%;
+            margin-top: 5%;
+            width: 600px;
+            height: 400px;
+        }
+        </style>
+
+
+    <!--code transformed from c++ to js-->
+    <script type="text/javascript">
+
+        var input;
+        var ts=new Token_stream();
+        var M;
+
+
+        function Token()
+        {
+            if(arguments.length===1)
+            {
+                this.kind = arguments[0];
+                this.value = 0;
+            }
+            else if(arguments.length===2)
+            {
+                this.kind=arguments[0];
+                this.value=arguments[1];
+            }
+
+        }
+
+
+        function Token_stream()
+        {
+
+
+
+            this.full=false;
+            this.buffer=new Token(0);
+            this.get=function()
+            {
+                if (this.full) { this.full = false; return this.buffer; }
+                var ch;
+                ch=input.substr(0,1);
+                input=input.substr(1);
+                switch (ch) {
+                    case '(':
+                    case ')':
+                    case '+':
+                    case '-':
+                    case '*':
+                    case '/':
+                    case '%':
+                    case ';':
+                    case '=':
+                    case '!':
+                    case 'M':
+                    case 'R':
+                        return new Token(ch);					//返回符号
+                    case '.':
+                    case '0':	case '1':	case '2':	case '3':	case '4':
+                    case '5':	case '6':	case '7':	case '8':	case '9':
+                {
+                    input=ch+input;
+                    var val;
+                    val=parseFloat(input);
+                    var strap=String(val);
+                    input=input.substr(strap.length);
+                    return new Token("8", val);			//返回浮点数
+                }
+                    default:
+
+                        throw "error";
+                }
+
+            };
+
+
+
+
+
+            this.put_back=function(tok)
+            {
+                this.buffer = tok;
+                this.full = true;
+            }
+
+
+        }
+
+
+
+
+        function fact(n)				//阶乘实现方法
+        {
+            var x = parseInt(n);
+            if (x !== n ) throw "error";
+            if (x < 0 ) throw "error";
+            var re = 1;
+            for (var i = 1; i <= x; ++i) {
+                re =re* i;
+            }
+            return re;
+        }
+
+        //文法
+        function primary()
+        {
+            var t = ts.get();
+            if (t.kind === '(') {
+                {
+                    var d1 = expression();
+                    t = ts.get();
+                    if (t.kind !== ')') {
+
+                        ts.put_back(t);
+                        throw "error";
+                    }
+                    t = ts.get();
+                    while (t.kind === '!') {
+                        d1 = fact(d1);
+                        t = ts.get();
+                    }
+                    ts.put_back(t);
+                    return d1;
+                }
+            } else if (t.kind === '+') {
+                return primary();
+            } else if (t.kind === '-') {
+                return -primary();
+            } else if (t.kind === '8') {
+                {
+                    var d2 = t.value;
+                    t = ts.get();
+                    while (t.kind === '!') {
+                        d2 = fact(d2);
+                        t = ts.get();
+                    }
+                    ts.put_back(t);
+                    return d2;
+                }
+            } else if (t.kind === 'R') {//将记录的M代入至R；
+                {
+                    var d3 = M;
+                    t = ts.get();
+                    if (t.kind === '!') {
+                        d3 = fact(d3);
+                        t = ts.get();
+                    }
+                    ts.put_back(t);
+                    return d3;
+
+                }
+            } else {
+                throw "error";
+            }
+        }
+
+        function term()
+        {
+            var left = primary();
+            var t;
+            t = ts.get();
+            while (true)
+            {
+                switch (t.kind)
+                {
+                    case '*':
+                    {
+                        left *= primary();
+                        t = ts.get();
+                        break;
+                    }
+                    case '/':
+                    {
+                        var d4 = primary();
+                        if (d4 === 0) throw "error";
+                        left /= d4;
+                        t = ts.get();
+                        break;
+                    }
+                    case '%':
+                    {
+                        var d5 = primary();
+                        var i1 = parseInt(left);
+                        if (i1 !== left) throw "error";
+                        var i2 = parseInt(d5);
+                        if (i2 !== d5) throw "error";
+                        if (i2 === 0) throw "error";
+                        left = i1%i2;
+                        t = ts.get();
+                        break;
+                    }
+                    default:
+                        ts.put_back(t);
+                        return left;
+                }
+            }
+        }
+
+        function expression()
+        {
+            var left = term();
+            while (true)
+            {
+                var t = ts.get();
+                switch (t.kind)
+                {
+                    case '+':
+                        left += term();
+                        break;
+                    case '-':
+                        left -= term();
+                        break;
+                    default:
+                        ts.put_back(t);
+                        return left;
+                }
+            }
+        }
+
+        function calculation()				//计算函数
+        {
+                input=document.getElementById('iptTxt').value;
+                try
+                {
+                    var t = ts.get();
+                    while (t.kind === ";") t = ts.get();
+                    ts.put_back(t);
+                    var res = expression();
+                    document.getElementById('optTxt').value=res;
+                    t = ts.get();
+                    if (t.kind === 'M') M = res;			//获取'M'并记录
+                }
+                catch (err)
+                {
+                    document.getElementById('optTxt').value = err;
+                }
+        }
+
+
+        //unit test
+        function unit_test(sample)
+        {
+            document.getElementById('iptTxt').value=sample;
+            input=document.getElementById('iptTxt').value;
+            try
+            {
+                var t = ts.get();
+                while (t.kind === ";") t = ts.get();
+                ts.put_back(t);
+                var res = expression();
+                document.getElementById('optTxt').value=res;
+                t = ts.get();
+                if (t.kind === 'M') M = res;
+            }
+            catch (err)
+            {
+                document.getElementById('optTxt').value = err;
+            }
+        }
+
+
+    </script>
+</head>
+<body>
+
+<div class="div1">
+    <h1>lab1</h1>
+
+    <!--sample buttons-->
+    <p>test samples</p>
+    <button onclick='unit_test("11*12/(1+(1/2))+5*(6-4)*31;");'>case4</button>
+    <button onclick='unit_test("1+++3;");'>case7</button>
+    <button onclick='unit_test("1+*3;");'>case8</button>
+    <button onclick='unit_test("1-+2;");'>case10</button>
+    <button onclick='unit_test("1+-3;");'>case11</button><br>
+    <button onclick='unit_test("4*-3;");'>case12</button>
+    <button onclick='unit_test("-2*-9++4*-2;");'>case14</button>
+    <button onclick='unit_test("9+222%77*7*8-3*3*33%23;");'>case15</button>
+    <button onclick='unit_test("5/0;");'>case18</button>
+    <button onclick='unit_test("7%0;");'>case20</button><br>
+    <button onclick='unit_test("9+((2*3;");'>case21</button>
+    <button onclick='unit_test("4%2.3;");'>case22</button>
+    <button onclick='unit_test("-5!;");'>case24</button>
+    <button onclick='unit_test("(-5)!;");'>case25</button>
+    <button onclick='unit_test("1.23!");'>case26</button><br><br><br>
+
+
+    <!--input and output box-->
+    input  : <input type="text" id="iptTxt" title="input"><br>
+    output: <input type="text" id="optTxt" title="output"><br><br>
+
+
+    <!--calculation button-->
+    <button onclick="calculation()">calculate</button><br>
+</div>
+
+
+<!--sample sources-->
+<div class="div2">
+    <p>All samples are downloaded from the campus network</p>
+
+    <iframe id="f1" frameborder="0" name="f1" width="400" height="800"
+            src="http://se.sjtucloud.com/c4x/se/SE117-2017/studentdownload/lab1_sample.txt"
+            scrolling="no">
+
+    </iframe>
+
+</div>
+
+</body>
+</html>
